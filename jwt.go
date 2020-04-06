@@ -8,7 +8,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type claims struct {
+type HashClaim struct {
 	Hash string `json:"covidtrace:hash"`
 	jwt.StandardClaims
 }
@@ -26,11 +26,11 @@ func NewIssuer(key []byte, iss, aud string, dur time.Duration) *Issuer {
 }
 
 func (i *Issuer) Token(hash string) (string, error) {
-	t := jwt.NewWithClaims(i.sm, &claims{
+	t := jwt.NewWithClaims(i.sm, &HashClaim{
 		hash,
 		jwt.StandardClaims{
-			Issuer:    i.iss,
 			Audience:  i.aud,
+			Issuer:    i.iss,
 			ExpiresAt: time.Now().Add(i.dur).Unix(),
 		},
 	})
@@ -38,8 +38,8 @@ func (i *Issuer) Token(hash string) (string, error) {
 	return t.SignedString(i.key)
 }
 
-func (i *Issuer) Validate(token string) (string, error) {
-	t, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+func (i *Issuer) Validate(signedString string) (string, error) {
+	t, err := jwt.Parse(signedString, func(t *jwt.Token) (interface{}, error) {
 		if t == nil {
 			return nil, errors.New("Token is nil")
 		}
@@ -52,25 +52,25 @@ func (i *Issuer) Validate(token string) (string, error) {
 	})
 
 	if err != nil || t == nil || !t.Valid {
-		return "", errors.New("Invalid jwt token")
+		return "", errors.New("Invalid jwt")
 	}
 
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", errors.New("Invalid jwt claims")
+		return "", errors.New("Invalid jwt")
 	}
 
 	if iss, ok := claims["iss"]; !ok || iss.(string) != i.iss {
-		return "", fmt.Errorf("Invalid `iss` claim: %v", iss)
+		return "", fmt.Errorf("Invalid iss: %v", iss)
 	}
 
 	if aud, ok := claims["aud"]; !ok || aud.(string) != i.aud {
-		return "", fmt.Errorf("Invalid `aud` claim: %v", aud)
+		return "", fmt.Errorf("Invalid aud: %v", aud)
 	}
 
 	hash, ok := claims["covidtrace:hash"]
-	if !ok || hash.(string) == "" {
-		return "", fmt.Errorf("Invalid `covidtrace:hash` claim: %v", hash)
+	if !ok {
+		return "", fmt.Errorf("Invalid hash: %v", hash)
 	}
 
 	return hash.(string), nil
