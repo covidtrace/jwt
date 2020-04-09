@@ -8,7 +8,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type hashClaim struct {
+// Claims represents the JWT claims covidtrace cares about
+type Claims struct {
 	Hash      string `json:"covidtrace:hash"`
 	Refreshed int    `json:"covidtrace:refreshed"`
 	jwt.StandardClaims
@@ -29,10 +30,9 @@ func NewIssuer(key []byte, iss, aud string, dur time.Duration) *Issuer {
 	return &Issuer{sm: jwt.SigningMethodHS256, key: key, iss: iss, aud: aud, dur: dur}
 }
 
-// Token handles generating a signed JWT token with the given `hash` and
-// `refresh` count
-func (i *Issuer) Token(hash string, refresh int) (string, error) {
-	t := jwt.NewWithClaims(i.sm, &hashClaim{
+// Claims constructs a new Claims object, filling details in from i
+func (i *Issuer) Claims(hash string, refresh int) *Claims {
+	return &Claims{
 		hash,
 		refresh,
 		jwt.StandardClaims{
@@ -40,15 +40,20 @@ func (i *Issuer) Token(hash string, refresh int) (string, error) {
 			Issuer:    i.iss,
 			ExpiresAt: time.Now().Add(i.dur).Unix(),
 		},
-	})
+	}
+}
 
+// Token handles generating a signed JWT token with the given `hash` and
+// `refresh` count
+func (i *Issuer) Token(hash string, refresh int) (string, error) {
+	t := jwt.NewWithClaims(i.sm, i.Claims(hash, refresh))
 	return t.SignedString(i.key)
 }
 
 // Validate handles ensuring `signedString` is a valid JWT issued by this
 // issuer. It returns the `hash` and `refreshed` claims, or an `error` if the
 // token is invalid
-func (i *Issuer) Validate(signedString string) (string, int, error) {
+func (i *Issuer) Validate(signedString string) (*Claims, error) {
 	t, err := jwt.Parse(signedString, func(t *jwt.Token) (interface{}, error) {
 		if t == nil {
 			return nil, errors.New("Token is nil")
@@ -62,39 +67,45 @@ func (i *Issuer) Validate(signedString string) (string, int, error) {
 	})
 
 	if err != nil || t == nil || !t.Valid {
-		return "", -1, errors.New("Invalid jwt")
+		return nil, errors.New("Invalid jwt")
 	}
 
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", -1, errors.New("Invalid jwt")
+		return nil, errors.New("Invalid jwt")
 	}
 
-	if iss, ok := claims["iss"]; !ok || iss.(string) != i.iss {
-		return "", -1, fmt.Errorf("Invalid iss: %v", iss)
+	if iss, ok := claims["iss"]; !ok {
+		return nil, errors.New("Missing iss")
+	} else if iss, ok = iss.(string); !ok || iss != i.iss {
+		return nil, fmt.Errorf("Invalid iss: %v", iss)
 	}
 
-	if aud, ok := claims["aud"]; !ok || aud.(string) != i.aud {
-		return "", -1, fmt.Errorf("Invalid aud: %v", aud)
+	if aud, ok := claims["aud"]; !ok {
+		return nil, errors.New("Missing aud")
+	} else if aud, ok = aud.(string); !ok || aud != i.aud {
+		return nil, fmt.Errorf("Invalid aud: %v", aud)
 	}
 
-	hash, ok := claims["covidtrace:hash"]
+	hashi, ok := claims["covidtrace:hash"]
 	if !ok {
-		return "", -1, fmt.Errorf("Invalid hash: %v", hash)
+		return nil, errors.New("Missing hash")
 	}
 
-	refreshed, ok := claims["covidtrace:refreshed"]
+	hash, ok := hashi.(string)
 	if !ok {
-		refreshed = 0
+		return nil, fmt.Errorf("Invalid hash: %v", hashi)
 	}
 
-	refresh, ok := refreshed.(float64)
+	refreshi, ok := claims["covidtrace:refreshed"]
 	if !ok {
-		refresh, ok := refreshed.(int)
-		if !ok {
-			return "", -1, fmt.Errorf("Invalid refresh: %v", refresh)
-		}
+		refreshi = 0
 	}
 
-	return hash.(string), int(refresh), nil
+	refresh, ok := refreshi.(float64)
+	if !ok {
+		return nil, fmt.Errorf("Invalid refresh: %v", refreshi)
+	}
+
+	return i.Claims(hash, int(refresh)), nil
 }

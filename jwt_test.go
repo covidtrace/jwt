@@ -22,16 +22,16 @@ func TestIssuer(t *testing.T) {
 		t.Error(err)
 	}
 
-	hash, refresh, err := issuer.Validate(token)
+	claims, err := issuer.Validate(token)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if hash != "hash" {
-		t.Errorf("Unexpected hash: %v", hash)
+	if claims.Hash != "hash" {
+		t.Errorf("Unexpected hash: %v", claims.Hash)
 	}
 
-	if refresh != 0 {
-		t.Errorf("Unexpected refresh: %v", refresh)
+	if claims.Refreshed != 0 {
+		t.Errorf("Unexpected refresh: %v", claims.Refreshed)
 	}
 }
