@@ -9,7 +9,8 @@ import (
 )
 
 type HashClaim struct {
-	Hash string `json:"covidtrace:hash"`
+	Hash      string `json:"covidtrace:hash"`
+	Refreshed int    `json:"covidtrace:refreshed"`
 	jwt.StandardClaims
 }
 
@@ -25,9 +26,10 @@ func NewIssuer(key []byte, iss, aud string, dur time.Duration) *Issuer {
 	return &Issuer{sm: jwt.SigningMethodHS256, key: key, iss: iss, aud: aud, dur: dur}
 }
 
-func (i *Issuer) Token(hash string) (string, error) {
+func (i *Issuer) Token(hash string, refresh int) (string, error) {
 	t := jwt.NewWithClaims(i.sm, &HashClaim{
 		hash,
+		refresh,
 		jwt.StandardClaims{
 			Audience:  i.aud,
 			Issuer:    i.iss,
@@ -38,7 +40,7 @@ func (i *Issuer) Token(hash string) (string, error) {
 	return t.SignedString(i.key)
 }
 
-func (i *Issuer) Validate(signedString string) (string, error) {
+func (i *Issuer) Validate(signedString string) (string, int, error) {
 	t, err := jwt.Parse(signedString, func(t *jwt.Token) (interface{}, error) {
 		if t == nil {
 			return nil, errors.New("Token is nil")
@@ -52,26 +54,39 @@ func (i *Issuer) Validate(signedString string) (string, error) {
 	})
 
 	if err != nil || t == nil || !t.Valid {
-		return "", errors.New("Invalid jwt")
+		return "", -1, errors.New("Invalid jwt")
 	}
 
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", errors.New("Invalid jwt")
+		return "", -1, errors.New("Invalid jwt")
 	}
 
 	if iss, ok := claims["iss"]; !ok || iss.(string) != i.iss {
-		return "", fmt.Errorf("Invalid iss: %v", iss)
+		return "", -1, fmt.Errorf("Invalid iss: %v", iss)
 	}
 
 	if aud, ok := claims["aud"]; !ok || aud.(string) != i.aud {
-		return "", fmt.Errorf("Invalid aud: %v", aud)
+		return "", -1, fmt.Errorf("Invalid aud: %v", aud)
 	}
 
 	hash, ok := claims["covidtrace:hash"]
 	if !ok {
-		return "", fmt.Errorf("Invalid hash: %v", hash)
+		return "", -1, fmt.Errorf("Invalid hash: %v", hash)
 	}
 
-	return hash.(string), nil
+	refreshed, ok := claims["covidtrace:refreshed"]
+	if !ok {
+		refreshed = 0
+	}
+
+	refresh, ok := refreshed.(float64)
+	if !ok {
+		refresh, ok := refreshed.(int)
+		if !ok {
+			return "", -1, fmt.Errorf("Invalid refresh: %v", refresh)
+		}
+	}
+
+	return hash.(string), int(refresh), nil
 }

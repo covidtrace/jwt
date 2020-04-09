@@ -17,17 +17,21 @@ func init() {
 }
 
 func TestIssuer(t *testing.T) {
-	token, err := issuer.Token("hash")
+	token, err := issuer.Token("hash", 0)
 	if err != nil {
 		t.Error(err)
 	}
 
-	hash, err := issuer.Validate(token)
+	hash, refresh, err := issuer.Validate(token)
 	if err != nil {
 		t.Error(err)
 	}
 
 	if hash != "hash" {
 		t.Errorf("Unexpected hash: %v", hash)
+	}
+
+	if refresh != 0 {
+		t.Errorf("Unexpected refresh: %v", refresh)
 	}
 }
