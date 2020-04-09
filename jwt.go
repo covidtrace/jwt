@@ -8,12 +8,14 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-type HashClaim struct {
+type hashClaim struct {
 	Hash      string `json:"covidtrace:hash"`
 	Refreshed int    `json:"covidtrace:refreshed"`
 	jwt.StandardClaims
 }
 
+// Issuer is the core covidtrace/jwt type. It exposes methods to issue and
+// verify tokens.
 type Issuer struct {
 	sm  jwt.SigningMethod
 	key []byte
@@ -22,12 +24,15 @@ type Issuer struct {
 	dur time.Duration
 }
 
+// NewIssuer returns, well, a new `Issuer`
 func NewIssuer(key []byte, iss, aud string, dur time.Duration) *Issuer {
 	return &Issuer{sm: jwt.SigningMethodHS256, key: key, iss: iss, aud: aud, dur: dur}
 }
 
+// Token handles generating a signed JWT token with the given `hash` and
+// `refresh` count
 func (i *Issuer) Token(hash string, refresh int) (string, error) {
-	t := jwt.NewWithClaims(i.sm, &HashClaim{
+	t := jwt.NewWithClaims(i.sm, &hashClaim{
 		hash,
 		refresh,
 		jwt.StandardClaims{
@@ -40,6 +45,9 @@ func (i *Issuer) Token(hash string, refresh int) (string, error) {
 	return t.SignedString(i.key)
 }
 
+// Validate handles ensuring `signedString` is a valid JWT issued by this
+// issuer. It returns the `hash` and `refreshed` claims, or an `error` if the
+// token is invalid
 func (i *Issuer) Validate(signedString string) (string, int, error) {
 	t, err := jwt.Parse(signedString, func(t *jwt.Token) (interface{}, error) {
 		if t == nil {
