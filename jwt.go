@@ -66,13 +66,17 @@ func (i *Issuer) Validate(signedString string) (*Claims, error) {
 		return i.key, nil
 	})
 
-	if err != nil || t == nil || !t.Valid {
+	if err != nil {
+		return nil, err
+	}
+
+	if t == nil || !t.Valid {
 		return nil, errors.New("Invalid jwt")
 	}
 
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("Invalid jwt")
+		return nil, errors.New("Invalid jwt claims")
 	}
 
 	if iss, ok := claims["iss"]; !ok {

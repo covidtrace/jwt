@@ -7,13 +7,21 @@ import (
 
 var issuer *Issuer
 
+func newIssuer(d string) (*Issuer, error) {
+	dur, err := time.ParseDuration(d)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewIssuer([]byte("SIGNING_KEY_HERE"), "iss", "aud", dur), nil
+}
+
 func init() {
-	dur, err := time.ParseDuration("1h")
+	var err error
+	issuer, err = newIssuer("1h")
 	if err != nil {
 		panic(err)
 	}
-
-	issuer = NewIssuer([]byte("SIGNING_KEY_HERE"), "iss", "aud", dur)
 }
 
 func TestIssuer(t *testing.T) {
@@ -33,5 +41,25 @@ func TestIssuer(t *testing.T) {
 
 	if claims.Refreshed != 0 {
 		t.Errorf("Unexpected refresh: %v", claims.Refreshed)
+	}
+}
+
+func TestExpired(t *testing.T) {
+	var err error
+	issuer, err = newIssuer("1ms")
+	if err != nil {
+		t.Error(err)
+	}
+
+	token, err := issuer.Token("hash", 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	time.Sleep(1 * time.Second)
+
+	_, err = issuer.Validate(token)
+	if err == nil {
+		t.Fatalf("Validate should have failed due to expiration")
 	}
 }
