@@ -80,4 +80,9 @@ func TestCopy(t *testing.T) {
 	if aud.aud == copy.aud {
 		t.Errorf("Expected aud to not match: %v, %v", aud.aud, copy.aud)
 	}
+
+	dur := copy.WithDur(10 * time.Second)
+	if dur.dur == copy.dur {
+		t.Errorf("Expected dur to not match: %v, %v", dur.dur, aud.dur)
+	}
 }

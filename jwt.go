@@ -48,6 +48,13 @@ func (i *Issuer) WithAud(aud string) *Issuer {
 	return copy
 }
 
+// WithDur returns a copy of `Issuer` with `dur` overwritten
+func (i *Issuer) WithDur(dur time.Duration) *Issuer {
+	copy := i.Copy()
+	i.dur = dur
+	return copy
+}
+
 // Claims constructs a new Claims object, filling details in from i
 func (i *Issuer) Claims(hash string, refresh int) *Claims {
 	return &Claims{
