@@ -63,3 +63,21 @@ func TestExpired(t *testing.T) {
 		t.Fatalf("Validate should have failed due to expiration")
 	}
 }
+
+func TestCopy(t *testing.T) {
+	var err error
+	issuer, err = newIssuer("1ms")
+	if err != nil {
+		t.Error(err)
+	}
+
+	copy := issuer.Copy()
+	if copy.iss != issuer.iss {
+		t.Errorf("Expected issuers to match: %v, %v", copy.iss, issuer.iss)
+	}
+
+	aud := copy.WithAud("new")
+	if aud.aud == copy.aud {
+		t.Errorf("Expected aud to not match: %v, %v", aud.aud, copy.aud)
+	}
+}

@@ -30,6 +30,24 @@ func NewIssuer(key []byte, iss, aud string, dur time.Duration) *Issuer {
 	return &Issuer{sm: jwt.SigningMethodHS256, key: key, iss: iss, aud: aud, dur: dur}
 }
 
+// Copy returns a copy of `Issuer`
+func (i *Issuer) Copy() *Issuer {
+	return &Issuer{
+		sm:  i.sm,
+		key: i.key,
+		iss: i.iss,
+		aud: i.aud,
+		dur: i.dur,
+	}
+}
+
+// WithAud returns a copy of `Issuer` with `aud` overwritten
+func (i *Issuer) WithAud(aud string) *Issuer {
+	copy := i.Copy()
+	i.aud = aud
+	return copy
+}
+
 // Claims constructs a new Claims object, filling details in from i
 func (i *Issuer) Claims(hash string, refresh int) *Claims {
 	return &Claims{
