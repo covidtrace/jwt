@@ -25,7 +25,7 @@ func init() {
 }
 
 func TestIssuer(t *testing.T) {
-	token, err := issuer.Token("hash", 0)
+	token, err := issuer.Token("hash", 0, "identifier", "role")
 	if err != nil {
 		t.Error(err)
 	}
@@ -51,7 +51,7 @@ func TestExpired(t *testing.T) {
 		t.Error(err)
 	}
 
-	token, err := issuer.Token("hash", 0)
+	token, err := issuer.Token("hash", 0, "identifier", "role")
 	if err != nil {
 		t.Error(err)
 	}
