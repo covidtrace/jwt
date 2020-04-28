@@ -92,7 +92,7 @@ func getClaimString(claims jwt.MapClaims, key, def string) string {
 func getClaimFloat64(claims jwt.MapClaims, key string, def float64) float64 {
 	result := def
 
-	iface, ok := claims["covidtrace:refreshed"]
+	iface, ok := claims[key]
 	if !ok {
 		iface = def
 	}
